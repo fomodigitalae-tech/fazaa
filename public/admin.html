@@ -330,7 +330,7 @@ function renderStats(){
     {label:'إجمالي الزوار',value:totalVisitors,color:'#f59e0b',bg:'rgba(245,158,11,0.1)',border:'rgba(245,158,11,0.25)',icon:'📊',fn:'openVM()',hint:'عرض التفاصيل ↗'},
     {label:'الزوار الحاليين',value:onlineCount,color:'#22c55e',bg:'rgba(34,197,94,0.1)',border:'rgba(34,197,94,0.25)',icon:'🌐',live:true,fn:'openVM()',hint:'المتصلين الآن ↗'},
     {label:'طلبات نشطة',value:active.length,color:'#3b82f6',bg:'rgba(59,130,246,0.1)',border:'rgba(59,130,246,0.25)',icon:'⚡',live:true,fn:'scrollToActive()',hint:'عرض النشطة ↗'},
-    {label:'مكتملة',value:done.length,color:'#16a34a',bg:'rgba(22,163,74,0.1)',border:'rgba(22,163,74,0.25)',icon:'✅'}
+    {label:'مكتملة',value:done.length,color:'#16a34a',bg:'rgba(22,163,74,0.1)',border:'rgba(22,163,74,0.25)',icon:'✅',fn:'scrollToDone()',hint:'عرض المكتملة ↗'}
   ];
   document.getElementById('statsRow').innerHTML=cards.map(function(c){
     var cl=c.fn?'cursor:pointer':'cursor:default';
@@ -589,14 +589,25 @@ function resetAll(){
 }
 
 function scrollToOrders(){
+  if(!orders.length){showNotif('📭 لا توجد طلبات');return;}
+  selectOrder(orders[0].ref);
   var el=document.querySelector('.col-o');
-  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});
-    el.style.boxShadow='inset 0 0 0 2px #1B7A3D';setTimeout(function(){el.style.boxShadow='';},1500);}
+  if(el){el.style.boxShadow='inset 0 0 0 2px #1B7A3D';setTimeout(function(){el.style.boxShadow='';},1500);}
+  showNotif('📋 إجمالي الطلبات: '+orders.length);
 }
 function scrollToActive(){
+  var active=orders.filter(isActive);
+  if(!active.length){showNotif('💤 لا توجد طلبات نشطة');return;}
+  selectOrder(active[0].ref);
   var el=document.querySelector('.col-a');
-  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});
-    el.style.boxShadow='inset 0 0 0 2px #3b82f6';setTimeout(function(){el.style.boxShadow='';},1500);}
+  if(el){el.style.boxShadow='inset 0 0 0 2px #3b82f6';setTimeout(function(){el.style.boxShadow='';},1500);}
+  showNotif('⚡ طلبات نشطة: '+active.length);
+}
+function scrollToDone(){
+  var done=orders.filter(function(o){return o.status==='confirmed';});
+  if(!done.length){showNotif('📭 لا توجد طلبات مكتملة');return;}
+  selectOrder(done[0].ref);
+  showNotif('✅ طلبات مكتملة: '+done.length);
 }
 
 checkAuth();
