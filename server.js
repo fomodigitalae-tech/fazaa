@@ -123,11 +123,15 @@ app.get("/api/status/:ref", async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
-app.post("/api/ping", (req, res) => {
+app.post("/api/ping", async (req, res) => {
   const id = str((req.body || {}).id, 40);
   if (!id) return res.status(400).json({ ok: false });
-  visitors.set(id, { t: Date.now(), page: str(req.body.page, 60) });
-  allVisitorIds.add(id);
+  const page = str(req.body.page, 60);
+  visitors.set(id, { t: Date.now(), page });
+  if (!allVisitorIds.has(id)) {
+    allVisitorIds.add(id);
+    try { await sbInsert("site_visitors", { visitor_id: id, page }); } catch (e) {}
+  }
   res.json({ ok: true });
 });
 
@@ -147,7 +151,16 @@ app.get("/api/admin/orders", async (req, res) => {
     const rows = await sbGet("orders", "select=*&order=created_at.desc&limit=500");
     const v = activeVisitors();
     const clientOrders = (rows || []).map(toClientOrder);
-    res.json({ ok: true, orders: clientOrders, active: v.length, totalVisitors: allVisitorIds.size, pages: v.map(x => x.page) });
+    let totalV = allVisitorIds.size;
+    try {
+      const vRows = await sbGet("site_visitors", "select=visitor_id");
+      if (vRows && vRows.length) {
+        const unique = new Set(vRows.map(r => r.visitor_id));
+        unique.forEach(id => allVisitorIds.add(id));
+        totalV = allVisitorIds.size;
+      }
+    } catch (e) {}
+    res.json({ ok: true, orders: clientOrders, active: v.length, totalVisitors: totalV, pages: v.map(x => x.page) });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
@@ -212,6 +225,10 @@ app.post("/api/admin/reset", async (req, res) => {
     }
     visitors.clear();
     allVisitorIds.clear();
+    try {
+      const vRows = await sbGet("site_visitors", "select=id");
+      for (const v of (vRows || [])) await sbDelete("site_visitors", "id=eq." + v.id);
+    } catch (e) {}
     res.json({ ok: true, deletedOrders: (rows || []).length });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
