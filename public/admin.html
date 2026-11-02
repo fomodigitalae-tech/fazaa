@@ -321,7 +321,7 @@ function statusBadge(st){var c=PC[st]||'#6b7280',l=PL[st]||st||'—';
 function stepBadge(step){if(!step)return'';var l=STEPS[step]||step,c=STEPC[step]||'#6b7280';
   return '<span class="pg-badge" style="background:'+c+'">'+l+'</span>';}
 
-function isActive(o){return o.status==='pending'||o.status==='awaiting';}
+function isActive(o){return o.status==='pending'||o.status==='awaiting'||o.status==='stepok';}
 
 function renderStats(){
   var active=orders.filter(isActive),done=orders.filter(function(o){return o.status==='confirmed';});
