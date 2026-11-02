@@ -195,6 +195,36 @@ app.delete("/api/admin/orders/:ref", async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
+app.get("/api/admin/visitors", (req, res) => {
+  if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const v = activeVisitors();
+  res.json({ ok: true, active: v, count: v.length });
+});
+
+app.post("/api/admin/reset", async (req, res) => {
+  if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  try {
+    const rows = await sbGet("orders", "select=ref");
+    for (const r of (rows || [])) {
+      await sbDelete("orders", "ref=eq." + encodeURIComponent(r.ref));
+    }
+    visitors.clear();
+    res.json({ ok: true, deletedOrders: (rows || []).length });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+app.delete("/api/admin/inactive", async (req, res) => {
+  if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  try {
+    const cutoff = new Date(Date.now() - 120000).toISOString();
+    const rows = await sbGet("orders", "updated_at=lt." + cutoff + "&select=ref");
+    for (const r of (rows || [])) {
+      await sbDelete("orders", "ref=eq." + encodeURIComponent(r.ref));
+    }
+    res.json({ ok: true, deleted: (rows || []).length });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
 if (!process.env.VERCEL) {
   app.use(express.static(path.join(__dirname, "public")));
   app.get("*", (req, res) => {
