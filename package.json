@@ -1,0 +1,12 @@
+{
+  "name": "faed",
+  "version": "1.0.0",
+  "description": "Fazaa membership cards website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
