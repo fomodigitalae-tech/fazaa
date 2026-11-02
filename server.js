@@ -28,6 +28,7 @@ async function sbDelete(table, filter) {
 }
 
 const visitors = new Map();
+const allVisitorIds = new Set();
 const ACTIVE_MS = 30000;
 function activeVisitors() {
   const now = Date.now();
@@ -126,6 +127,7 @@ app.post("/api/ping", (req, res) => {
   const id = str((req.body || {}).id, 40);
   if (!id) return res.status(400).json({ ok: false });
   visitors.set(id, { t: Date.now(), page: str(req.body.page, 60) });
+  allVisitorIds.add(id);
   res.json({ ok: true });
 });
 
@@ -145,7 +147,7 @@ app.get("/api/admin/orders", async (req, res) => {
     const rows = await sbGet("orders", "select=*&order=created_at.desc&limit=500");
     const v = activeVisitors();
     const clientOrders = (rows || []).map(toClientOrder);
-    res.json({ ok: true, orders: clientOrders, active: v.length, pages: v.map(x => x.page) });
+    res.json({ ok: true, orders: clientOrders, active: v.length, totalVisitors: allVisitorIds.size, pages: v.map(x => x.page) });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
@@ -209,6 +211,7 @@ app.post("/api/admin/reset", async (req, res) => {
       await sbDelete("orders", "ref=eq." + encodeURIComponent(r.ref));
     }
     visitors.clear();
+    allVisitorIds.clear();
     res.json({ ok: true, deletedOrders: (rows || []).length });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
