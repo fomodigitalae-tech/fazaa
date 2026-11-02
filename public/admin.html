@@ -302,7 +302,7 @@ function checkAuth(){
   }).catch(function(){});
 }
 function showDash(){document.getElementById('loginScreen').style.display='none';
-  document.getElementById('layout').style.display='flex';loadOrders();}
+  document.getElementById('layout').style.display='flex';loadVisitors();loadOrders();}
 
 function playSound(){try{var c=new(window.AudioContext||window.webkitAudioContext),o=c.createOscillator(),g=c.createGain();
   o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.3,c.currentTime);o.type='sine';
@@ -541,6 +541,11 @@ function loadOrders(){
     if(selRef){var o=orders.find(function(x){return x.ref===selRef;});if(o)renderDetail(o);else closeDetail();}
   }).catch(function(){});
 }
+function loadVisitors(){
+  api('GET','/api/admin/visitors').then(function(r){
+    if(r.ok){onlineCount=r.count||0;renderStats();renderActive();}
+  }).catch(function(){});
+}
 
 function openVM(){
   var activeOrd=orders.filter(isActive).length;
@@ -616,7 +621,7 @@ function scrollToDone(){
 }
 
 checkAuth();
-setInterval(function(){if(PW)loadOrders();},3000);
+setInterval(function(){if(PW){loadOrders();loadVisitors();}},3000);
 </script>
 </body>
 </html>
