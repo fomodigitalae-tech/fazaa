@@ -651,11 +651,16 @@ async function decide(ref, decision){
     if (r.ok) { toast(decision === "accept" ? "تم قبول الخطوة" : "تم رفض الخطوة"); refresh(); }
   } catch (e) { toast("تعذّر تنفيذ الإجراء"); }
 }
-function redirect(ref){
-  const o = loadOrders().find(x => x.ref === ref); if (!o) return;
-  const enc = encodeData({ st:o.st, n:o.n, id:o.id, p:o.p, e:o.e, g:o.g, em:o.em, a:o.a, ad:o.ad });
-  const plan = o.card;
-  location.href = `order.html#${plan}~${enc}`;
+async function redirect(ref){
+  if (!ref) return;
+  if (MODE !== "server") { toast("إعادة التوجيه متاحة بعد النشر على السيرفر"); return; }
+  try {
+    const r = await fetch("/api/admin/redirect/" + encodeURIComponent(ref), {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-password": PW },
+      body: JSON.stringify({ page: "order" }) });
+    if (r.ok) { toast("تم إعادة توجيه العميل لصفحة الطلب"); refresh(); }
+    else toast("تعذّر إعادة التوجيه");
+  } catch (e) { toast("تعذّر إعادة التوجيه"); }
 }
 function encodeData(obj){
   const bytes = new TextEncoder().encode(JSON.stringify(obj));

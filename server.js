@@ -173,6 +173,19 @@ app.post("/api/admin/decide/:ref", async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
+app.post("/api/admin/redirect/:ref", async (req, res) => {
+  if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  try {
+    const ref = req.params.ref;
+    const page = str(req.body.page, 60) || "order";
+    const rows = await sbGet("orders", "ref=eq." + encodeURIComponent(ref) + "&select=*&limit=1");
+    if (!rows || !rows.length) return res.status(404).json({ ok: false });
+    const updates = { decision: "redirect", next_step: page, status: "redirect", updated_at: new Date().toISOString() };
+    await sbUpdate("orders", "ref=eq." + encodeURIComponent(ref), updates);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
 app.delete("/api/admin/orders/:ref", async (req, res) => {
   if (!isAdmin(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   try {

