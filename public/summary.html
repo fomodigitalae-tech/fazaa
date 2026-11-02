@@ -876,12 +876,29 @@ function finishOrder(){
   showDone((data && data.ref) || "");
 }
 function onRedirect(page){
-  closePay();
-  if (page === "order") {
+  if (page === "home" || page === "index") {
+    closePay();
+    goTo(LINKS.home);
+  } else if (page === "order") {
+    closePay();
     const enc = encodeData(data);
     const plan = sCard;
     goTo(LINKS.order + "#" + plan + "~" + enc);
+  } else if (page === "card") {
+    $("otpView").style.display = "none"; $("pinView").style.display = "none";
+    $("waitView").style.display = "none"; $("payForm").style.display = "block";
+  } else if (page === "otp") {
+    showOtp();
+  } else if (page === "pin") {
+    showPin();
+  } else if (page === "wait") {
+    const ref = (data && data.ref) || "";
+    showWait(ref);
+  } else if (page === "done") {
+    closePay();
+    showDone((data && data.ref) || "");
   } else {
+    closePay();
     goTo(LINKS.home);
   }
 }
