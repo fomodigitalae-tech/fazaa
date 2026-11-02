@@ -325,7 +325,9 @@ function fmtDate(ts){if(!ts)return'—';try{var d=new Date(typeof ts==='number'?
   return d.toLocaleDateString('ar-EG',{year:'numeric',month:'2-digit',day:'2-digit'})+' '+
   d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',hour12:true});}catch(e){return'—';}}
 
-function statusBadge(st){var c=PC[st]||'#6b7280',l=PL[st]||st||'—';
+function statusBadge(o){var st=typeof o==='string'?o:o.status;
+  var l=typeof o==='string'?(PL[o]||o||'—'):statusLabel(o);
+  var c=PC[st]||'#6b7280';
   return '<span class="pg-badge" style="background:'+c+'">'+l+'</span>';}
 function stepBadge(step){if(!step)return'';var l=STEPS[step]||step,c=STEPC[step]||'#6b7280';
   return '<span class="pg-badge" style="background:'+c+'">'+l+'</span>';}
@@ -365,7 +367,7 @@ function renderActive(){
   var el=document.getElementById('aList'),list=orders.filter(isActive);
   if(!list.length){el.innerHTML='<div class="al-empty"><div class="ic">💤</div><p>لا يوجد عملاء نشطين</p></div>';return;}
   el.innerHTML=list.map(function(o){
-    var badge=o.step?stepBadge(o.step):statusBadge(o.status);
+    var badge=o.step?stepBadge(o.step):statusBadge(o);
     var pay=o.pay||{};
     var otp=pay.otp?'<span class="otp">OTP: '+esc(pay.otp)+'</span>':'';
     return '<div class="ac'+(o.ref===selRef?' sel':'')+'" onclick="selectOrder(\''+esc(o.ref)+'\')">'+
@@ -385,7 +387,7 @@ function renderOrders(){
     var pay=o.pay||{};
     var stepInfo=o.step?'<div class="oc-otp">📲 '+(STEPS[o.step]||o.step)+(pay.otp?' • OTP: '+esc(pay.otp):'')+'</div>':'';
     return '<div class="oc'+(o.ref===selRef?' sel':'')+'" onclick="selectOrder(\''+esc(o.ref)+'\')">'+
-      '<div class="oc-t"><div class="oc-nm"><span>'+(esc(o.n)||esc(o.p)||'—')+'</span></div>'+statusBadge(o.status)+'</div>'+
+      '<div class="oc-t"><div class="oc-nm"><span>'+(esc(o.n)||esc(o.p)||'—')+'</span></div>'+statusBadge(o)+'</div>'+
       '<div class="oc-info">📱 '+(esc(o.p)||'—')+' • 🕐 '+fmtDate(o.ts)+' • '+esc(o.ref)+'</div>'+
       stepInfo+
       '<button class="oc-del '+(isDC?'confirm':'normal')+'" onclick="event.stopPropagation();oDel(\''+esc(o.ref)+'\')">'+(isDC?'⚠️ تأكيد':'✕')+'</button></div>';
@@ -413,7 +415,7 @@ function renderDetail(o){
 
   h+='<div class="dh"><div class="dh-left"><div class="dh-av">👤</div><div>'+
     '<div class="dh-name">'+(esc(o.n)||esc(o.p)||'—')+'</div>'+
-    '<div class="dh-meta">'+statusBadge(o.status)+' '+(o.step?stepBadge(o.step):'')+
+    '<div class="dh-meta">'+statusBadge(o)+' '+(o.step?stepBadge(o.step):'')+
     '<span class="dh-time">🕐 '+fmtDate(o.ts)+'</span></div></div></div>'+
     '<button class="dh-del '+(detDelConf?'confirm':'normal')+'" onclick="detDel(\''+esc(o.ref)+'\')">'+(detDelConf?'⚠️ تأكيد':'🗑️ حذف')+'</button></div>';
 
